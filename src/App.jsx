@@ -1,6 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
-
-const API_KEY = "cc2e5aca50b042f9ca80e3c9a8a5a7eb"; // OpenWeatherMap free key
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const WMO = {
   0: { label: "Clear", icon: "☀️" },
@@ -64,13 +62,50 @@ export default function WeatherApp() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
-  const [searching, setSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [tab, setTab] = useState("today");
   const [unit, setUnit] = useState("C");
+  const debounceRef = useRef(null);
+  const wrapperRef = useRef(null);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Fetch suggestions as user types
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&featuretype=city`
+        ).then(r => r.json());
+        setSuggestions(res);
+        setShowSuggestions(res.length > 0);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 300);
+  }, [query]);
 
   const fetchWeather = useCallback(async (lat, lon, name) => {
     setLoading(true);
     setError(null);
+    setShowSuggestions(false);
+    setSuggestions([]);
     try {
       const [meteo, owm] = await Promise.all([
         fetch(
@@ -85,10 +120,9 @@ export default function WeatherApp() {
           `&timezone=auto&forecast_days=7`
         ).then(r => r.json()),
         fetch(
-          `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
+          `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=cc2e5aca50b042f9ca80e3c9a8a5a7eb&units=metric`
         ).then(r => r.json()).catch(() => null),
       ]);
-
       setWeather({ meteo, owm, lat, lon });
       setLocation(name);
     } catch (e) {
@@ -97,6 +131,13 @@ export default function WeatherApp() {
       setLoading(false);
     }
   }, []);
+
+  const selectSuggestion = (place) => {
+    const name = place.display_name.split(",")[0];
+    setQuery("");
+    setShowSuggestions(false);
+    fetchWeather(parseFloat(place.lat), parseFloat(place.lon), name);
+  };
 
   const geolocate = useCallback(() => {
     setLoading(true);
@@ -115,25 +156,6 @@ export default function WeatherApp() {
     );
   }, [fetchWeather]);
 
-  const searchLocation = async () => {
-    if (!query.trim()) return;
-    setSearching(true);
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`
-      ).then(r => r.json());
-      if (!res.length) { setError("Location not found."); return; }
-      const { lat, lon, display_name } = res[0];
-      const name = display_name.split(",")[0];
-      fetchWeather(parseFloat(lat), parseFloat(lon), name);
-      setQuery("");
-    } catch {
-      setError("Search failed.");
-    } finally {
-      setSearching(false);
-    }
-  };
-
   useEffect(() => { geolocate(); }, []);
 
   const toUnit = (c) => unit === "C" ? c : (c * 9/5 + 32);
@@ -144,7 +166,6 @@ export default function WeatherApp() {
   const hourly = weather?.meteo?.hourly;
   const owm = weather?.owm;
 
-  // Get next 24 hours of hourly data
   const now = new Date();
   const hourlySlice = hourly
     ? hourly.time.reduce((acc, t, i) => {
@@ -158,14 +179,10 @@ export default function WeatherApp() {
   const wmo = WMO[c?.weather_code] || { label: "Unknown", icon: "🌡️" };
   const isDay = c?.is_day !== 0;
 
-  const bg = isDay
-    ? "linear-gradient(160deg, #0f0c29, #302b63, #24243e)"
-    : "linear-gradient(160deg, #0f0c29, #302b63, #24243e)";
-
   const styles = {
     app: {
       minHeight: "100vh",
-      background: bg,
+      background: "linear-gradient(160deg, #0f0c29, #302b63, #24243e)",
       color: "#fff",
       fontFamily: "'DM Mono', 'Fira Mono', monospace",
       maxWidth: 430,
@@ -182,16 +199,53 @@ export default function WeatherApp() {
     searchRow: {
       display: "flex",
       gap: 8,
+      position: "relative",
+    },
+    searchWrap: {
+      flex: 1,
+      position: "relative",
     },
     input: {
-      flex: 1,
+      width: "100%",
       background: "rgba(255,255,255,0.08)",
       border: "1px solid rgba(255,255,255,0.15)",
-      borderRadius: 10,
+      borderRadius: showSuggestions ? "10px 10px 0 0" : 10,
       padding: "10px 14px",
       color: "#fff",
       fontSize: 14,
       outline: "none",
+      fontFamily: "inherit",
+    },
+    dropdown: {
+      position: "absolute",
+      top: "100%",
+      left: 0,
+      right: 0,
+      background: "#1e1b4b",
+      border: "1px solid rgba(255,255,255,0.15)",
+      borderTop: "none",
+      borderRadius: "0 0 10px 10px",
+      zIndex: 100,
+      overflow: "hidden",
+    },
+    suggestionItem: (hovered) => ({
+      padding: "10px 14px",
+      fontSize: 13,
+      cursor: "pointer",
+      borderBottom: "1px solid rgba(255,255,255,0.06)",
+      background: hovered ? "rgba(255,255,255,0.1)" : "transparent",
+      transition: "background 0.15s",
+      display: "flex",
+      flexDirection: "column",
+      gap: 2,
+    }),
+    suggestionMain: {
+      color: "#fff",
+      fontWeight: "500",
+    },
+    suggestionSub: {
+      color: "rgba(255,255,255,0.4)",
+      fontSize: 11,
     },
     btn: {
       background: "rgba(255,255,255,0.12)",
@@ -202,15 +256,17 @@ export default function WeatherApp() {
       cursor: "pointer",
       fontSize: 14,
       whiteSpace: "nowrap",
+      fontFamily: "inherit",
     },
     unitToggle: {
-      background: unit === "F" ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.08)",
+      background: "rgba(255,255,255,0.08)",
       border: "1px solid rgba(255,255,255,0.2)",
       borderRadius: 10,
       color: "#fff",
       padding: "10px 14px",
       cursor: "pointer",
       fontSize: 14,
+      fontFamily: "inherit",
     },
     hero: {
       padding: "30px 20px 20px",
@@ -265,9 +321,7 @@ export default function WeatherApp() {
       fontWeight: active ? "600" : "400",
       transition: "all 0.2s",
     }),
-    section: {
-      padding: "0 20px",
-    },
+    section: { padding: "0 20px" },
     grid: {
       display: "grid",
       gridTemplateColumns: "1fr 1fr",
@@ -287,15 +341,8 @@ export default function WeatherApp() {
       letterSpacing: 1.2,
       marginBottom: 6,
     },
-    cardValue: {
-      fontSize: 22,
-      fontWeight: "500",
-    },
-    cardSub: {
-      fontSize: 12,
-      color: "rgba(255,255,255,0.5)",
-      marginTop: 2,
-    },
+    cardValue: { fontSize: 22, fontWeight: "500" },
+    cardSub: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 2 },
     hourlyScroll: {
       display: "flex",
       gap: 10,
@@ -313,11 +360,7 @@ export default function WeatherApp() {
       textAlign: "center",
       flexShrink: 0,
     },
-    hourTime: {
-      fontSize: 11,
-      color: "rgba(255,255,255,0.45)",
-      marginBottom: 6,
-    },
+    hourTime: { fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 6 },
     hourIcon: { fontSize: 20, marginBottom: 4 },
     hourTemp: { fontSize: 16, fontWeight: "500" },
     hourPop: { fontSize: 11, color: "#7dd3fc", marginTop: 3 },
@@ -359,23 +402,48 @@ export default function WeatherApp() {
     rowLabel: { color: "rgba(255,255,255,0.5)" },
   };
 
+  const [hoveredIdx, setHoveredIdx] = useState(null);
+
   return (
     <div style={styles.app}>
-      {/* Google Font */}
       <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
 
       <div style={styles.header}>
         <div style={styles.searchRow}>
-          <input
-            style={styles.input}
-            placeholder="Search city..."
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && searchLocation()}
-          />
-          <button style={styles.btn} onClick={searchLocation} disabled={searching}>
-            {searching ? "…" : "Go"}
-          </button>
+          <div style={styles.searchWrap} ref={wrapperRef}>
+            <input
+              style={styles.input}
+              placeholder="Search city..."
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+              onKeyDown={e => {
+                if (e.key === "Escape") setShowSuggestions(false);
+              }}
+            />
+            {showSuggestions && suggestions.length > 0 && (
+              <div style={styles.dropdown}>
+                {suggestions.map((place, i) => {
+                  const parts = place.display_name.split(",");
+                  const main = parts[0];
+                  const sub = parts.slice(1, 3).join(",").trim();
+                  return (
+                    <div
+                      key={place.place_id}
+                      style={styles.suggestionItem(hoveredIdx === i)}
+                      onMouseEnter={() => setHoveredIdx(i)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      onMouseDown={() => selectSuggestion(place)}
+                      onTouchEnd={() => selectSuggestion(place)}
+                    >
+                      <span style={styles.suggestionMain}>📍 {main}</span>
+                      <span style={styles.suggestionSub}>{sub}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           <button style={styles.btn} onClick={geolocate} title="Use my location">📍</button>
           <button style={styles.unitToggle} onClick={() => setUnit(u => u === "C" ? "F" : "C")}>
             °{unit === "C" ? "F" : "C"}
@@ -397,7 +465,6 @@ export default function WeatherApp() {
 
       {weather && c && (
         <>
-          {/* Hero */}
           <div style={styles.hero}>
             <div style={styles.icon}>{wmo.icon}</div>
             <div style={styles.temp}>{deg(c.temperature_2m)}</div>
@@ -406,7 +473,6 @@ export default function WeatherApp() {
             <div style={styles.locationName}>📍 {location}</div>
           </div>
 
-          {/* Tabs */}
           <div style={styles.tabs}>
             {["today", "hourly", "week", "details"].map(t => (
               <button key={t} style={styles.tabBtn(tab === t)} onClick={() => setTab(t)}>
@@ -415,7 +481,6 @@ export default function WeatherApp() {
             ))}
           </div>
 
-          {/* TODAY TAB */}
           {tab === "today" && (
             <div style={styles.section}>
               <div style={styles.grid}>
@@ -447,19 +512,18 @@ export default function WeatherApp() {
                 <div style={styles.card}>
                   <div style={styles.cardLabel}>Cloud Cover</div>
                   <div style={styles.cardValue}>{c.cloud_cover}%</div>
-                  <div style={styles.cardSub}>Precipitation: {c.precipitation}mm</div>
+                  <div style={styles.cardSub}>Precip: {c.precipitation}mm</div>
                 </div>
               </div>
-
               {daily && (
                 <div style={styles.grid}>
                   <div style={styles.card}>
                     <div style={styles.cardLabel}>Sunrise</div>
-                    <div style={styles.cardValue} style={{fontSize:18}}>{fmtTime(owm?.sys?.sunrise)}</div>
+                    <div style={{fontSize:18, fontWeight:"500"}}>{fmtTime(owm?.sys?.sunrise)}</div>
                   </div>
                   <div style={styles.card}>
                     <div style={styles.cardLabel}>Sunset</div>
-                    <div style={styles.cardValue} style={{fontSize:18}}>{fmtTime(owm?.sys?.sunset)}</div>
+                    <div style={{fontSize:18, fontWeight:"500"}}>{fmtTime(owm?.sys?.sunset)}</div>
                   </div>
                   <div style={styles.card}>
                     <div style={styles.cardLabel}>Today High</div>
@@ -474,7 +538,6 @@ export default function WeatherApp() {
             </div>
           )}
 
-          {/* HOURLY TAB */}
           {tab === "hourly" && (
             <div style={styles.section}>
               <div style={styles.sectionTitle}>Next 24 Hours</div>
@@ -488,11 +551,10 @@ export default function WeatherApp() {
                   </div>
                 ))}
               </div>
-
               <div style={styles.sectionTitle}>Hourly Details</div>
               <div style={styles.fullCard}>
                 {hourlySlice.slice(0, 12).map((h, i) => (
-                  <div key={i} style={styles.row}>
+                  <div key={i} style={{...styles.row, borderBottom: i === 11 ? "none" : styles.row.borderBottom}}>
                     <span style={styles.rowLabel}>{i === 0 ? "Now" : fmtHour(h.time)}</span>
                     <span>{(WMO[h.code] || WMO[0]).icon} {deg(h.temp)}</span>
                     <span style={{color:"#7dd3fc"}}>{h.pop > 0 ? `💧${h.pop}%` : ""}</span>
@@ -503,7 +565,6 @@ export default function WeatherApp() {
             </div>
           )}
 
-          {/* WEEK TAB */}
           {tab === "week" && daily && (
             <div style={styles.section}>
               <div style={styles.sectionTitle}>7-Day Forecast</div>
@@ -521,39 +582,9 @@ export default function WeatherApp() {
                   </div>
                 ))}
               </div>
-
-              <div style={styles.sectionTitle}>Daily Details</div>
-              {daily.time.slice(0, 4).map((t, i) => (
-                <div key={i} style={{...styles.fullCard, marginBottom: 10}}>
-                  <div style={{fontWeight:"600", marginBottom: 10, fontSize: 14}}>
-                    {(WMO[daily.weather_code[i]] || WMO[0]).icon} {i === 0 ? "Today" : fmt(t)}
-                  </div>
-                  <div style={styles.row}>
-                    <span style={styles.rowLabel}>High / Low</span>
-                    <span>{deg(daily.temperature_2m_max[i])} / {deg(daily.temperature_2m_min[i])}</span>
-                  </div>
-                  <div style={styles.row}>
-                    <span style={styles.rowLabel}>Rain Chance</span>
-                    <span>{daily.precipitation_probability_max[i]}%</span>
-                  </div>
-                  <div style={styles.row}>
-                    <span style={styles.rowLabel}>Precipitation</span>
-                    <span>{daily.precipitation_sum[i]}mm</span>
-                  </div>
-                  <div style={styles.row}>
-                    <span style={styles.rowLabel}>Max UV</span>
-                    <span>{daily.uv_index_max[i]} ({uvLabel(daily.uv_index_max[i])})</span>
-                  </div>
-                  <div style={{...styles.row, borderBottom:"none"}}>
-                    <span style={styles.rowLabel}>Max Wind</span>
-                    <span>{Math.round(daily.wind_speed_10m_max[i])} km/h</span>
-                  </div>
-                </div>
-              ))}
             </div>
           )}
 
-          {/* DETAILS TAB */}
           {tab === "details" && (
             <div style={styles.section}>
               <div style={styles.sectionTitle}>Current Conditions</div>
@@ -578,7 +609,6 @@ export default function WeatherApp() {
                   </div>
                 ))}
               </div>
-
               {owm && (
                 <>
                   <div style={styles.sectionTitle}>Sun & Moon</div>
@@ -596,10 +626,9 @@ export default function WeatherApp() {
                   </div>
                 </>
               )}
-
               <div style={styles.sectionTitle}>Source</div>
               <div style={{...styles.fullCard, fontSize: 12, color: "rgba(255,255,255,0.4)"}}>
-                Weather data from Open-Meteo & OpenWeatherMap · Coordinates: {weather.lat.toFixed(4)}, {weather.lon.toFixed(4)}
+                Open-Meteo & OpenWeatherMap · {weather.lat.toFixed(4)}, {weather.lon.toFixed(4)}
               </div>
             </div>
           )}
