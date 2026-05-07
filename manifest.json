@@ -1,0 +1,22 @@
+{
+  "name": "Weather App",
+  "short_name": "Weather",
+  "description": "Accurate weather at a glance",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0c29",
+  "theme_color": "#0f0c29",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1779/1779807.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1779/1779807.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
