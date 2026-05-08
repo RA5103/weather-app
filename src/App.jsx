@@ -203,29 +203,75 @@ export default function App(){
       fontFamily:'system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif'
     }}>
 
-      <style>{`
-        *{
-          box-sizing:border-box;
-          font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif !important;
-        }
+    <style>{`
+  *{
+    box-sizing:border-box;
+    font-family: Arial, sans-serif !important;
+  }
 
-        html,
-        body,
-        #root{
-          margin:0;
-          padding:0;
-          background:#080818;
-          font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif !important;
-        }
+  html, body, #root {
+    font-family: Arial, sans-serif !important;
+  }
 
-        ::-webkit-scrollbar{
-          display:none;
-        }
+  input::placeholder{
+    color:rgba(255,255,255,0.28);
+  }
 
-        button{
-          outline:none;
-        }
-      `}</style>
+  ::-webkit-scrollbar{
+    display:none;
+  }
+
+  @keyframes fadeUp{
+    from{
+      opacity:0;
+      transform:translateY(10px);
+    }
+    to{
+      opacity:1;
+      transform:translateY(0);
+    }
+  }
+
+  @keyframes slideIn{
+    from{
+      opacity:0;
+      transform:translateX(-12px);
+    }
+    to{
+      opacity:1;
+      transform:translateX(0);
+    }
+  }
+
+  @keyframes spin{
+    to{
+      transform:rotate(360deg);
+    }
+  }
+
+  @keyframes shimmer{
+    0%,100%{
+      opacity:.5;
+    }
+
+    50%{
+      opacity:1;
+    }
+  }
+
+  .sug:hover{
+    background:rgba(255,255,255,0.1)!important;
+  }
+
+  .tab:active,
+  .icobtn:active{
+    transform:scale(.94);
+  }
+
+  .locrow:hover{
+    background:rgba(255,255,255,0.06)!important;
+  }
+`}</style>
 
       {busy && (
         <div style={{
