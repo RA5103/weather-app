@@ -585,9 +585,9 @@ export default function WeatherApp(){
         ["Wind Speed",`${Math.round(cur.wind_speed_10m)} km/h`],
         ["Wind Gusts",`${Math.round(cur.wind_gusts_10m)} km/h`],
         ["Wind Dir",`${dirLabel(cur.wind_direction_10m)} (${Math.round(cur.wind_direction_10m)}°)`],
-        ["Sunrise", daily?.sunrise?.[0] ? fmtTS(daily.sunrise[0]) : "—"],
-["Sunset", daily?.sunset?.[0] ? fmtTS(daily.sunset[0]) : "—"],
-["Timezone", wx?.meteo?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone]
+       ["Sunrise", owm?.sys?.sunrise ? fmtTS(owm.sys.sunrise) : "—"],
+["Sunset", owm?.sys?.sunset ? fmtTS(owm.sys.sunset) : "—"],
+["Timezone", owm?.timezone ? `UTC ${owm.timezone >= 0 ? "+" : ""}${owm.timezone / 3600}` : "—"]
       ].map(([l,v],i,a)=>(
         <Row
           key={l}
