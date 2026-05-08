@@ -230,7 +230,7 @@ export default function WeatherApp(){
         <div key={i} style={{position:"fixed",top:o.top,bottom:o.bottom,left:o.left,right:o.right,width:o.w,height:o.w,background:`radial-gradient(circle,${o.c} 0%,transparent 70%)`,borderRadius:"50%",pointerEvents:"none",zIndex:0}}/>
       ))}
 
-      <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+    
       <style>{`
         *{box-sizing:border-box}
         input::placeholder{color:rgba(255,255,255,0.28)}
