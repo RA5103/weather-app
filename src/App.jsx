@@ -45,35 +45,10 @@ const uvLabel = i =>
 const dirLabel = d =>
   ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(d/22.5)%16];
 
-const fmtHour = iso =>
-  new Date(iso).toLocaleTimeString("en-US",{
-    hour:"numeric",
-    hour12:true
-  });
-
 const fmtDay = iso =>
   new Date(iso).toLocaleDateString("en-US",{
     weekday:"short"
   });
-
-const fmtTS = val => {
-  if(!val) return "—";
-
-  try{
-    const d = typeof val==="number"
-      ? new Date(val*1000)
-      : new Date(val);
-
-    if(isNaN(d.getTime())) return "—";
-
-    return d.toLocaleTimeString([],{
-      hour:"2-digit",
-      minute:"2-digit"
-    });
-  }catch{
-    return "—";
-  }
-};
 
 const G = {
   sm:{
@@ -144,7 +119,6 @@ const UnitToggle = memo(({unit,onToggle}) => (
       borderRadius:16,
       cursor:"pointer",
       position:"relative",
-      flexShrink:0,
       ...G.sm,
       display:"flex",
       alignItems:"center",
@@ -199,27 +173,24 @@ const UnitToggle = memo(({unit,onToggle}) => (
   </div>
 ));
 
-const RefreshButton = memo(({onRefresh, refreshing, lastRefresh}) => (
+const RefreshButton = memo(({onRefresh, refreshing}) => (
   <button
     onClick={onRefresh}
-    disabled={refreshing}
-    title={`Updated: ${lastRefresh || "Never"}`}
     style={{
       position:"fixed",
       bottom:24,
       right:24,
-      zIndex:1000,
-      ...G.lg,
-      borderRadius:20,
       width:64,
       height:64,
-      cursor:"pointer",
+      borderRadius:20,
       border:G.lg.border,
+      ...G.lg,
+      color:"#fff",
+      cursor:"pointer",
+      zIndex:999,
       display:"flex",
       alignItems:"center",
-      justifyContent:"center",
-      color:"#fff",
-      boxShadow:"0 12px 30px rgba(0,0,0,0.3)"
+      justifyContent:"center"
     }}
   >
     {refreshing ? (
@@ -252,15 +223,27 @@ const RefreshButton = memo(({onRefresh, refreshing, lastRefresh}) => (
   </button>
 ));
 
-async function fetchPreview(lat,lon){
-  const r = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=auto`
-  )
-    .then(r=>r.json())
-    .catch(()=>null);
-
-  return r?.current;
-}
+const LocationButton = memo(({onClick}) => (
+  <button
+    onClick={onClick}
+    style={{
+      position:"fixed",
+      bottom:100,
+      right:24,
+      width:64,
+      height:64,
+      borderRadius:20,
+      border:G.lg.border,
+      ...G.lg,
+      color:"#fff",
+      cursor:"pointer",
+      zIndex:999,
+      fontSize:28
+    }}
+  >
+    📍
+  </button>
+));
 
 export default function WeatherApp(){
 
@@ -270,11 +253,86 @@ export default function WeatherApp(){
   const [busy,setBusy] = useState(false);
   const [unit,setUnit] = useState("C");
   const [refreshing,setRefreshing] = useState(false);
-  const [lastRefresh,setLastRefresh] = useState(null);
+
+  const [q,setQ] = useState("");
+  const [sugs,setSugs] = useState([]);
+  const [open,setOpen] = useState(false);
+
+  const [menuOpen,setMenuOpen] = useState(false);
+
+  const [saved,setSaved] = useState(()=>{
+    try{
+      return JSON.parse(localStorage.getItem("wx_saved") || "[]");
+    }catch{
+      return [];
+    }
+  });
+
+  const searchRef = useRef(null);
+  const menuRef = useRef(null);
+  const debounceRef = useRef();
 
   const deg = useCallback(v =>
     `${Math.round(unit==="C" ? v : (v*9/5)+32)}°${unit}`
   ,[unit]);
+
+  useEffect(()=>{
+    localStorage.setItem("wx_saved",JSON.stringify(saved));
+  },[saved]);
+
+  useEffect(()=>{
+
+    if(q.length < 2){
+      setSugs([]);
+      setOpen(false);
+      return;
+    }
+
+    clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async()=>{
+
+      try{
+
+        const r = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=en&format=json`
+        ).then(r=>r.json());
+
+        const results = r.results || [];
+
+        setSugs(results);
+        setOpen(results.length > 0);
+
+      }catch{
+        setSugs([]);
+        setOpen(false);
+      }
+
+    },300);
+
+    return ()=>clearTimeout(debounceRef.current);
+
+  },[q]);
+
+  useEffect(()=>{
+
+    const fn = e => {
+
+      if(searchRef.current && !searchRef.current.contains(e.target)){
+        setOpen(false);
+      }
+
+      if(menuRef.current && !menuRef.current.contains(e.target)){
+        setMenuOpen(false);
+      }
+
+    };
+
+    document.addEventListener("mousedown",fn);
+
+    return ()=>document.removeEventListener("mousedown",fn);
+
+  },[]);
 
   const getBgGradient = () => {
 
@@ -283,13 +341,6 @@ export default function WeatherApp(){
     }
 
     const isDay = wx.meteo.current.is_day;
-    const code = wx.meteo.current.weather_code;
-
-    const rainy = [61,63,65,80,81,82].includes(code);
-
-    if(rainy){
-      return "linear-gradient(135deg,#0a0a1f 0%,#1a1a3a 35%,#2a1a4a 65%,#0a0a1f 100%)";
-    }
 
     if(!isDay){
       return "linear-gradient(135deg,#000 0%,#0a1428 35%,#1a0a2e 65%,#000 100%)";
@@ -305,35 +356,21 @@ export default function WeatherApp(){
 
     try{
 
-      const [meteo,aqi] = await Promise.all([
-
-        fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-          `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,` +
-          `surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,visibility,is_day,dew_point_2m,cloud_cover` +
-          `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset` +
-          `&timezone=auto`
-        ).then(r=>r.json()),
-
-        fetchPreview(lat,lon)
-
-      ]);
+      const meteo = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+        `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,` +
+        `surface_pressure,wind_speed_10m,wind_direction_10m,uv_index,visibility,is_day,dew_point_2m,cloud_cover` +
+        `&daily=weather_code,temperature_2m_max,temperature_2m_min` +
+        `&timezone=auto`
+      ).then(r=>r.json());
 
       setWx({
         meteo,
-        aqi,
         lat,
         lon
       });
 
       setLoc(name);
-
-      setLastRefresh(
-        new Date().toLocaleTimeString([],{
-          hour:"2-digit",
-          minute:"2-digit"
-        })
-      );
 
     }catch{
       setErr("Could not load weather.");
@@ -343,26 +380,18 @@ export default function WeatherApp(){
 
   },[]);
 
-  const refreshData = useCallback(async()=>{
+  const refreshData = async()=>{
 
     if(!wx?.lat || !wx?.lon || !loc) return;
 
     setRefreshing(true);
 
-    try{
-      await load(wx.lat,wx.lon,loc);
-    }finally{
-      setRefreshing(false);
-    }
+    await load(wx.lat,wx.lon,loc);
 
-  },[wx,loc,load]);
+    setRefreshing(false);
+  };
 
   const gps = useCallback(()=>{
-
-    if(!navigator.geolocation){
-      setErr("Geolocation not supported");
-      return;
-    }
 
     navigator.geolocation.getCurrentPosition(
 
@@ -391,7 +420,7 @@ export default function WeatherApp(){
 
       },
 
-      ()=>setErr("Location access denied")
+      ()=>setErr("Location denied")
 
     );
 
@@ -400,6 +429,37 @@ export default function WeatherApp(){
   useEffect(()=>{
     gps();
   },[gps]);
+
+  const pick = s => {
+    load(s.latitude,s.longitude,s.name);
+    setQ("");
+    setOpen(false);
+  };
+
+  const saveLocation = () => {
+
+    if(!wx || !loc) return;
+
+    if(saved.find(s => s.name === loc)) return;
+
+    setSaved(prev => [
+      ...prev,
+      {
+        name:loc,
+        lat:wx.lat,
+        lon:wx.lon
+      }
+    ]);
+  };
+
+  const removeLocation = (name,e) => {
+
+    e.stopPropagation();
+
+    setSaved(prev =>
+      prev.filter(s => s.name !== name)
+    );
+  };
 
   const cur = wx?.meteo?.current;
   const daily = wx?.meteo?.daily;
@@ -422,18 +482,10 @@ export default function WeatherApp(){
     >
 
       <style>{`
-        *{
-          box-sizing:border-box
-        }
-
-        body{
-          margin:0
-        }
-
+        *{box-sizing:border-box}
+        body{margin:0}
         @keyframes spin{
-          to{
-            transform:rotate(360deg)
-          }
+          to{transform:rotate(360deg)}
         }
       `}</style>
 
@@ -459,28 +511,198 @@ export default function WeatherApp(){
 
         <>
 
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{display:"flex",gap:10,marginBottom:20}}>
 
-            <div>
-              <div style={{fontSize:32,fontWeight:700}}>
-                {loc}
-              </div>
+            <div ref={menuRef} style={{position:"relative"}}>
 
-              <div style={{color:"rgba(255,255,255,0.6)"}}>
-                {(WMO[cur.weather_code] || WMO[0]).l}
-              </div>
+              <button
+                onClick={()=>setMenuOpen(v=>!v)}
+                style={{
+                  width:46,
+                  height:46,
+                  borderRadius:16,
+                  border:G.lg.border,
+                  ...G.lg,
+                  color:"#fff",
+                  fontSize:22,
+                  cursor:"pointer"
+                }}
+              >
+                ⋮
+              </button>
+
+              {menuOpen && (
+
+                <div
+                  style={{
+                    position:"absolute",
+                    top:56,
+                    left:0,
+                    width:250,
+                    borderRadius:20,
+                    ...G.lg,
+                    overflow:"hidden",
+                    zIndex:999
+                  }}
+                >
+
+                  <div style={{padding:16,fontSize:12,opacity:.6}}>
+                    SAVED LOCATIONS
+                  </div>
+
+                  {saved.map((s,i)=>(
+
+                    <div
+                      key={i}
+                      onClick={()=>load(s.lat,s.lon,s.name)}
+                      style={{
+                        padding:"14px 16px",
+                        display:"flex",
+                        justifyContent:"space-between",
+                        alignItems:"center",
+                        borderTop:"1px solid rgba(255,255,255,0.06)",
+                        cursor:"pointer"
+                      }}
+                    >
+
+                      <div>
+                        <div>{s.name}</div>
+                        <div style={{fontSize:11,opacity:.5}}>
+                          Saved location
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={(e)=>removeLocation(s.name,e)}
+                        style={{
+                          background:"none",
+                          border:"none",
+                          color:"#fff",
+                          cursor:"pointer",
+                          fontSize:18
+                        }}
+                      >
+                        ×
+                      </button>
+
+                    </div>
+
+                  ))}
+
+                  <div style={{padding:16}}>
+
+                    <div style={{fontSize:11,opacity:.5,marginBottom:10}}>
+                      TEMPERATURE UNIT
+                    </div>
+
+                    <UnitToggle
+                      unit={unit}
+                      onToggle={() =>
+                        setUnit(u=>u==="C"?"F":"C")
+                      }
+                    />
+
+                  </div>
+
+                  <div style={{padding:"0 16px 16px"}}>
+
+                    <button
+                      onClick={saveLocation}
+                      style={{
+                        width:"100%",
+                        padding:"12px",
+                        borderRadius:14,
+                        border:"none",
+                        background:"rgba(255,255,255,0.12)",
+                        color:"#fff",
+                        cursor:"pointer"
+                      }}
+                    >
+                      + Save Current Location
+                    </button>
+
+                  </div>
+
+                </div>
+
+              )}
+
             </div>
 
-            <UnitToggle
-              unit={unit}
-              onToggle={() =>
-                setUnit(u => u==="C" ? "F" : "C")
-              }
-            />
+            <div
+              ref={searchRef}
+              style={{
+                flex:1,
+                position:"relative"
+              }}
+            >
+
+              <input
+                value={q}
+                onChange={e=>setQ(e.target.value)}
+                placeholder="Search city..."
+                style={{
+                  width:"100%",
+                  padding:"13px 16px",
+                  borderRadius:16,
+                  border:"none",
+                  outline:"none",
+                  background:"rgba(255,255,255,0.12)",
+                  color:"#fff"
+                }}
+              />
+
+              {open && sugs.length > 0 && (
+
+                <div
+                  style={{
+                    position:"absolute",
+                    top:"100%",
+                    left:0,
+                    right:0,
+                    marginTop:8,
+                    borderRadius:16,
+                    overflow:"hidden",
+                    ...G.lg,
+                    zIndex:999
+                  }}
+                >
+
+                  {sugs.map((s,i)=>(
+
+                    <div
+                      key={i}
+                      onClick={()=>pick(s)}
+                      style={{
+                        padding:"12px 14px",
+                        cursor:"pointer",
+                        borderBottom:i<sugs.length-1
+                          ? "1px solid rgba(255,255,255,0.06)"
+                          : "none"
+                      }}
+                    >
+
+                      <div>{s.name}</div>
+
+                      <div style={{fontSize:11,opacity:.5}}>
+                        {[s.admin1,s.country]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </div>
+
+                    </div>
+
+                  ))}
+
+                </div>
+
+              )}
+
+            </div>
 
           </div>
 
-          <div style={{textAlign:"center",padding:"40px 0 30px"}}>
+          <div style={{textAlign:"center",padding:"30px 0"}}>
 
             <div style={{fontSize:90}}>
               {(WMO[cur.weather_code] || WMO[0]).i}
@@ -503,6 +725,16 @@ export default function WeatherApp(){
               }}
             >
               Feels like {deg(cur.apparent_temperature)}
+            </div>
+
+            <div
+              style={{
+                marginTop:8,
+                fontSize:18,
+                fontWeight:500
+              }}
+            >
+              📍 {loc}
             </div>
 
           </div>
@@ -631,10 +863,11 @@ export default function WeatherApp(){
 
       )}
 
+      <LocationButton onClick={gps} />
+
       <RefreshButton
         onRefresh={refreshData}
         refreshing={refreshing}
-        lastRefresh={lastRefresh}
       />
 
     </div>
