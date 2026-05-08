@@ -17,17 +17,28 @@ const fmtHour  = iso => new Date(iso).toLocaleTimeString("en-US",{hour:"numeric"
 const fmtDay   = iso => new Date(iso).toLocaleDateString("en-US",{weekday:"short"});
 const fmtTS = (val) => {
   if (!val) return "—";
-  // If it's a number (Unix TS from OWM), multiply by 1000. 
-  // If it's a string (ISO from Meteo), use it directly.
-  const date = typeof val === "number" ? new Date(val * 1000) : new Date(val);
-  
-  if (isNaN(date.getTime())) return "—";
 
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  try {
+    let date;
+
+    // OpenWeatherMap gives unix seconds
+    if (typeof val === "number") {
+      date = new Date(val * 1000);
+    } 
+    // Open-Meteo gives ISO strings
+    else {
+      date = new Date(val);
+    }
+
+    if (isNaN(date.getTime())) return "—";
+
+    return date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
 };
 
 const G = {
@@ -585,9 +596,9 @@ export default function WeatherApp(){
         ["Wind Speed",`${Math.round(cur.wind_speed_10m)} km/h`],
         ["Wind Gusts",`${Math.round(cur.wind_gusts_10m)} km/h`],
         ["Wind Dir",`${dirLabel(cur.wind_direction_10m)} (${Math.round(cur.wind_direction_10m)}°)`],
-       ["Sunrise", owm?.sys?.sunrise ? fmtTS(owm.sys.sunrise) : "—"],
-["Sunset", owm?.sys?.sunset ? fmtTS(owm.sys.sunset) : "—"],
-["Timezone", owm?.timezone ? `UTC ${owm.timezone >= 0 ? "+" : ""}${owm.timezone / 3600}` : "—"]
+      ["Sunrise", fmtTS(owm?.sys?.sunrise)],
+["Sunset", fmtTS(owm?.sys?.sunset)],
+["Timezone", wx?.meteo?.timezone || "—"]
       ].map(([l,v],i,a)=>(
         <Row
           key={l}
