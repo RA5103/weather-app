@@ -224,7 +224,7 @@ export default function WeatherApp(){
   },[]) : [];
 
   return(
-    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#080818 0%,#0d1b3e 35%,#1a0a2e 65%,#080c1a 100%)",color:"#fff",fontFamily:"'DM Mono','Fira Mono',monospace",maxWidth:430,margin:"0 auto",padding:"0 0 80px",position:"relative",overflow:"hidden"}}>
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#080818 0%,#0d1b3e 35%,#1a0a2e 65%,#080c1a 100%)",color:"#fff",fontFamily:"system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",maxWidth:430,margin:"0 auto",padding:"0 0 80px",position:"relative",overflow:"hidden"}}>
 
       {[{top:-100,left:-80,w:320,c:"rgba(80,120,255,0.22)"},{top:180,right:-80,w:280,c:"rgba(40,180,255,0.14)"},{bottom:120,left:-50,w:220,c:"rgba(160,60,255,0.11)"}].map((o,i)=>(
         <div key={i} style={{position:"fixed",top:o.top,bottom:o.bottom,left:o.left,right:o.right,width:o.w,height:o.w,background:`radial-gradient(circle,${o.c} 0%,transparent 70%)`,borderRadius:"50%",pointerEvents:"none",zIndex:0}}/>
