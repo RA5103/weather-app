@@ -863,7 +863,40 @@ export default function WeatherApp(){
 
       )}
 
-      <LocationButton onClick={gps} />
+    <button
+  onClick={gps}
+  style={{
+    position:"fixed",
+    bottom:100,
+    right:24,
+    zIndex:1000,
+    ...G.lg,
+    borderRadius:20,
+    width:64,
+    height:64,
+    cursor:"pointer",
+    border:G.lg.border,
+    display:"flex",
+    alignItems:"center",
+    justifyContent:"center",
+    color:"#fff",
+    boxShadow:"0 12px 30px rgba(0,0,0,0.3)"
+  }}
+>
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 11 7 11s7-5.75 7-11c0-3.87-3.13-7-7-7z"/>
+    <circle cx="12" cy="9" r="2.5"/>
+  </svg>
+</button>
 
       <RefreshButton
         onRefresh={refreshData}
