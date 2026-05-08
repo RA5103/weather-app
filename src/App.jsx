@@ -11,8 +11,11 @@ const WMO = {
   95:{l:"Thunderstorm",i:"⛈️"},96:{l:"Thunderstorm+Hail",i:"⛈️"},99:{l:"Thunderstorm+Hail",i:"⛈️"},
 };
 
-// AQI Colors & Labels
-const AQI_COLORS = {1:"#10b981",2:"#10b981",3:"#f59e0b",4:"#f59e0b",5:"#ef4444",6:"#7c2d12",7:"#7c2d12",8:"#1f2937",9:"#1f2937"};
+// AQI Colors
+const AQI_COLORS = {
+  1: "#10b981", 2: "#10b981", 3: "#f59e0b", 4: "#f59e0b", 5: "#ef4444", 
+  6: "#7c2d12", 7: "#7c2d12", 8: "#1f2937", 9: "#1f2937"
+};
 const AQI_LABELS = {1:"Good",2:"Fair",3:"Moderate",4:"Poor",5:"Very Poor",6:"Hazardous",7:"Hazardous",8:"Hazardous",9:"Hazardous"};
 
 const uvLabel  = i => i<=2?"Low":i<=5?"Moderate":i<=7?"High":i<=10?"Very High":"Extreme";
@@ -43,7 +46,6 @@ const Card = memo(({label,value,sub,color}) => (
 ));
 
 const QuickAction = memo(({icon,label,onClick,active}) => (
-  <button (
   <button onClick={onClick} style={{
     ...G.sm, padding:"12px 10px", borderRadius:14, minWidth:68, height:68,
     display:"flex", flexDirection:"column", alignItems:"center", gap:4,
