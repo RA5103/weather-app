@@ -211,17 +211,44 @@ const RefreshButton = memo(({onRefresh, refreshing, lastRefresh}) => (
       zIndex:1000,
       ...G.lg,
       borderRadius:20,
-      width:56,
-      height:56,
+      width:64,
+      height:64,
       cursor:"pointer",
       border:G.lg.border,
       display:"flex",
       alignItems:"center",
       justifyContent:"center",
-      color:"#fff"
+      color:"#fff",
+      boxShadow:"0 12px 30px rgba(0,0,0,0.3)"
     }}
   >
-    {refreshing ? "⟳" : "↻"}
+    {refreshing ? (
+      <div
+        style={{
+          width:32,
+          height:32,
+          border:"3px solid rgba(255,255,255,0.2)",
+          borderTop:"3px solid #fff",
+          borderRadius:"50%",
+          animation:"spin .8s linear infinite"
+        }}
+      />
+    ) : (
+      <svg
+        width="34"
+        height="34"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+    )}
   </button>
 ));
 
