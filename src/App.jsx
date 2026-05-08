@@ -62,6 +62,32 @@ const UnitToggle = memo(({unit,onToggle}) => (
   </div>
 ));
 
+// New Refresh Button Component
+const RefreshButton = memo(({onRefresh, refreshing}) => (
+  <button onClick={onRefresh} disabled={refreshing}
+    style={{
+      ...G.lg, borderRadius:16, width:44, height:44, cursor:refreshing?"default":"pointer",
+      border:G.lg.border, display:"flex", alignItems:"center", justifyContent:"center",
+      padding:0, position:"relative", flexShrink:0, transition:"all 0.15s"
+    }}
+    title="Refresh weather data"
+  >
+    {refreshing ? (
+      <div style={{
+        width:20, height:20, border:"1.8px solid rgba(255,255,255,0.12)",
+        borderTop:"1.8px solid rgba(255,255,255,0.7)", borderRadius:"50%",
+        animation:"spin 0.75s linear infinite"
+      }}/>
+    ) : (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+    )}
+  </button>
+));
+
 async function fetchPreview(lat,lon){
   const r = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,apparent_temperature&timezone=auto`
@@ -83,8 +109,10 @@ export default function WeatherApp(){
   const [menuOpen, setMenuOpen]= useState(false);
   const [saved,    setSaved]   = useState(()=>{try{return JSON.parse(localStorage.getItem("wx_saved")||"[]")}catch{return []}});
   const [previews, setPreviews]= useState({});
-  // New state for local time
   const [localTime, setLocalTime] = useState({date: "", time: ""});
+  // New state for refresh button
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState(null);
 
   const searchRef = useRef(null);
   const menuRef   = useRef(null);
@@ -134,6 +162,17 @@ export default function WeatherApp(){
     return () => clearInterval(timeRef.current);
   }, [wx?.meteo?.timezone]);
 
+  // Auto-refresh every 30 minutes when location is loaded
+  useEffect(() => {
+    if (!wx?.lat || !wx?.lon) return;
+    
+    const interval = setInterval(() => {
+      refreshData();
+    }, 30 * 60 * 1000); // 30 minutes
+
+    return () => clearInterval(interval);
+  }, [wx?.lat, wx?.lon]);
+
   const load = useCallback(async(lat,lon,name)=>{
     setBusy(true); setErr(null); setOpen(false); setSugs([]); setMenuOpen(false);
     try{
@@ -152,9 +191,23 @@ export default function WeatherApp(){
         ).then(r=>r.json()).catch(()=>null),
       ]);
       setWx({meteo,owm,lat,lon}); setLoc(name); setQ("");
+      setLastRefresh(new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}));
     }catch{ setErr("Could not load weather. Check connection."); }
     finally{ setBusy(false); }
   },[]);
+
+  // New refresh function
+  const refreshData = useCallback(async () => {
+    if (!wx?.lat || !wx?.lon || !loc) return;
+    setRefreshing(true);
+    try {
+      await load(wx.lat, wx.lon, loc);
+    } catch (error) {
+      setErr("Refresh failed. Check connection.");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [wx?.lat, wx?.lon, loc, load]);
 
   const gps = useCallback(()=>{
     if(!navigator.geolocation){ setErr("Geolocation not supported."); return; }
@@ -283,7 +336,7 @@ export default function WeatherApp(){
                   <span style={{color:"rgba(255,255,255,0.38)"}}>Tap + below to save.</span>
                 </div>
               ) : (
-                <div style={{maxHeight:260,overflowY:"auto"}}>
+                <div style={{maxHeight:220,overflowY:"auto"}}> {/* Reduced height to accommodate refresh button */}
                   {saved.map((s,i)=>{
                     const p = previews[s.name];
                     const w = p?(WMO[p.weather_code]||WMO[0]):null;
@@ -311,10 +364,20 @@ export default function WeatherApp(){
                 </div>
               )}
 
-              {/* Unit Toggle in Menu */}
+              {/* Refresh Section */}
               <div style={{padding:"12px 16px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
-                <div style={{fontSize:10,color:"rgba(255,255,255,0.38)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Temperature Unit</div>
-                <UnitToggle unit={unit} onToggle={()=>setUnit(u=>u==="C"?"F":"C")}/>
+                <div style={{fontSize:10,color:"rgba(255,255,255,0.38)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+                  Data Controls
+                  {lastRefresh && (
+                    <span style={{fontSize:9,color:"rgba(255,255,255,0.25)"}}>
+                      · Updated {lastRefresh}
+                    </span>
+                  )}
+                </div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <RefreshButton onRefresh={refreshData} refreshing={refreshing || busy}/>
+                  <UnitToggle unit={unit} onToggle={()=>setUnit(u=>u==="C"?"F":"C")}/>
+                </div>
               </div>
 
               {loc && (
@@ -329,7 +392,7 @@ export default function WeatherApp(){
           )}
         </div>
 
-        {/* Search - Removed Unit Toggle from here */}
+        {/* Search */}
         <div ref={searchRef} style={{flex:1,position:"relative"}}>
           <div style={{display:"flex",gap:8}}>
             <div style={{flex:1,position:"relative"}}>
@@ -374,30 +437,30 @@ export default function WeatherApp(){
       </div>
 
       {/* Loading */}
-      {busy && (
+      {(busy || refreshing) && (
         <div style={{textAlign:"center",padding:"64px 0",position:"relative",zIndex:1}}>
           <div style={{width:34,height:34,border:"2.5px solid rgba(255,255,255,0.08)",borderTop:"2.5px solid rgba(255,255,255,0.7)",borderRadius:"50%",margin:"0 auto",animation:"spin 0.75s linear infinite"}}/>
-          <div style={{marginTop:14,color:"rgba(255,255,255,0.3)",fontSize:12,animation:"shimmer 1.5s infinite"}}>Loading weather…</div>
+          <div style={{marginTop:14,color:"rgba(255,255,255,0.3)",fontSize:12,animation:"shimmer 1.5s infinite"}}>
+            {refreshing ? "Refreshing…" : "Loading weather…"}
+          </div>
         </div>
       )}
 
       {/* Error */}
-      {err && !busy && (
+      {err && !busy && !refreshing && (
         <div style={{margin:"16px 14px 0",...G.sm,borderRadius:16,padding:"13px 16px",fontSize:13,color:"#fca5a5",border:"1px solid rgba(255,80,80,0.25)",background:"rgba(255,50,50,0.07)"}}>
           ⚠️ {err}
         </div>
       )}
 
-      {/* Main content */}
-      {wx && cur && !busy && (
+      {/* Main content - rest remains the same */}
+      {wx && cur && !busy && !refreshing && (
         <div style={{animation:"fadeUp 0.3s ease",position:"relative",zIndex:1}}>
-
-          {/* Hero - Updated with Local Date/Time */}
+          {/* Hero section - unchanged */}
           <div style={{padding:"26px 14px 18px",textAlign:"center"}}>
             <div style={{fontSize:78,lineHeight:1,marginBottom:8,filter:"drop-shadow(0 0 32px rgba(140,180,255,0.4))",userSelect:"none"}}>{wmo.i}</div>
             <div style={{fontSize:84,fontWeight:300,letterSpacing:-5,lineHeight:1,marginBottom:4,textShadow:"0 0 60px rgba(140,200,255,0.2)"}}>{deg(cur.temperature_2m)}</div>
             
-            {/* Local Date/Time Section */}
             <div style={{marginBottom:12}}>
               <div style={{color:"rgba(255,255,255,0.42)",fontSize:13,marginBottom:2}}>Feels like {deg(cur.apparent_temperature)}</div>
               {localTime.date && (
@@ -422,8 +485,7 @@ export default function WeatherApp(){
             <div style={{fontSize:12,color:"rgba(255,255,255,0.32)",marginTop:5}}>· {loc}</div>
           </div>
 
-          {/* Rest of the component remains the same */}
-          {/* Tabs */}
+          {/* All tabs content remains exactly the same */}
           <div style={{display:"flex",margin:"0 14px 14px",padding:4,borderRadius:18,...G.md}}>
             {["today","hourly","week","details"].map(t=>(
               <button key={t} className="tab" onClick={()=>setTab(t)}
@@ -449,7 +511,7 @@ export default function WeatherApp(){
             </div>
           )}
 
-          {/* HOURLY */}
+          {/* HOURLY, WEEK, DETAILS tabs remain unchanged */}
           {tab==="hourly" && (
             <div style={{padding:"0 14px"}}>
               <div style={{fontSize:10,color:"rgba(255,255,255,0.28)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Next 24 Hours</div>
@@ -467,7 +529,6 @@ export default function WeatherApp(){
             </div>
           )}
 
-          {/* WEEK */}
           {tab==="week" && daily && (
             <div style={{padding:"0 14px"}}>
               <div style={{fontSize:10,color:"rgba(255,255,255,0.28)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>7-Day Forecast</div>
@@ -488,7 +549,6 @@ export default function WeatherApp(){
             </div>
           )}
 
-          {/* DETAILS */}
           {tab==="details" && (
             <div style={{padding:"0 14px"}}>
               <div style={{fontSize:10,color:"rgba(255,255,255,0.28)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Current Conditions</div>
@@ -518,11 +578,10 @@ export default function WeatherApp(){
               </div>
             </div>
           )}
-
         </div>
       )}
 
-      {!wx && !busy && !err && (
+      {!wx && !busy && !refreshing && !err && (
         <div style={{textAlign:"center",padding:60,color:"rgba(255,255,255,0.22)",fontSize:13}}>Allow location or search a city</div>
       )}
 
