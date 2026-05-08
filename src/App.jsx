@@ -396,8 +396,8 @@ export default function WeatherApp(){
               <Card label="Pressure"    value={`${Math.round(cur.surface_pressure)}`}    sub="hPa"/>
               <Card label="Visibility"  value={`${(cur.visibility/1000).toFixed(1)}`}    sub="km"/>
               <Card label="Cloud Cover" value={`${cur.cloud_cover}%`}                    sub={`Rain: ${cur.precipitation}mm`}/>
-              <Card label="Sunrise"     value={fmtTS(owm?.sys?.sunrise)}/>
-              <Card label="Sunset"      value={fmtTS(owm?.sys?.sunset)}/>
+              <Card label="Sunrise" value={fmtTS(daily?.sunrise[0])} />
+<Card label="Sunset"  value={fmtTS(daily?.sunset[0])} />
               {daily&&<Card label="Today High" value={deg(daily.temperature_2m_max[0])}/>}
               {daily&&<Card label="Today Low"  value={deg(daily.temperature_2m_min[0])}/>}
             </div>
