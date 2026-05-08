@@ -389,20 +389,60 @@ export default function WeatherApp(){
           </div>
 
           {tab==="today"&&(
-            <div style={{padding:"0 14px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              <Card label="Humidity"    value={`${cur.relative_humidity_2m}%`}          sub={`Dew pt ${deg(cur.dew_point_2m)}`}/>
-              <Card label="Wind"        value={`${Math.round(cur.wind_speed_10m)} km/h`} sub={`${dirLabel(cur.wind_direction_10m)} · Gusts ${Math.round(cur.wind_gusts_10m)}`}/>
-              <Card label="UV Index"    value={cur.uv_index}                              sub={uvLabel(cur.uv_index)}/>
-              <Card label="Pressure"    value={`${Math.round(cur.surface_pressure)}`}    sub="hPa"/>
-              <Card label="Visibility"  value={`${(cur.visibility/1000).toFixed(1)}`}    sub="km"/>
-              <Card label="Cloud Cover" value={`${cur.cloud_cover}%`}                    sub={`Rain: ${cur.precipitation}mm`}/>
-              <Card label="Sunrise" value={fmtTS(daily?.sunrise[0])} />
-<Card label="Sunset"  value={fmtTS(daily?.sunset[0])} />
-              {daily&&<Card label="Today High" value={deg(daily.temperature_2m_max[0])}/>}
-              {daily&&<Card label="Today Low"  value={deg(daily.temperature_2m_min[0])}/>}
-            </div>
-          )}
+      label="Wind"        
+      value={`${Math.round(cur.wind_speed_10m)} km/h`}
+      sub={`${dirLabel(cur.wind_direction_10m)} · Gusts ${Math.round(cur.wind_gusts_10m)}`}
+    />
 
+    <Card
+      label="UV Index"    
+      value={cur.uv_index}
+      sub={uvLabel(cur.uv_index)}
+    />
+
+    <Card
+      label="Pressure"    
+      value={`${Math.round(cur.surface_pressure)}`}    
+      sub="hPa"
+    />
+
+    <Card
+      label="Visibility"  
+      value={`${(cur.visibility/1000).toFixed(1)}`}    
+      sub="km"
+    />
+
+    <Card
+      label="Cloud Cover"
+      value={`${cur.cloud_cover}%`}                    
+      sub={`Rain: ${cur.precipitation}mm`}
+    />
+
+    <Card
+      label="Sunrise"
+      value={fmtTS(daily?.sunrise?.[0])}
+    />
+
+    <Card
+      label="Sunset"  
+      value={fmtTS(daily?.sunset?.[0])}
+    />
+
+    {daily&&(
+      <Card
+        label="Today High"
+        value={deg(daily.temperature_2m_max[0])}
+      />
+    )}
+
+    {daily&&(
+      <Card
+        label="Today Low"  
+        value={deg(daily.temperature_2m_min[0])}
+      />
+    )}
+  </div>
+)}
           {tab==="hourly"&&(
             <div style={{padding:"0 14px"}}>
               <div style={{fontSize:10,color:"rgba(255,255,255,0.28)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Next 24 Hours</div>
