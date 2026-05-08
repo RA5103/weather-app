@@ -734,7 +734,7 @@ export default function WeatherApp(){
                 fontWeight:500
               }}
             >
-              📍 {loc}
+              {loc}
             </div>
 
           </div>
