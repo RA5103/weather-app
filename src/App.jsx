@@ -727,15 +727,30 @@ export default function WeatherApp(){
               Feels like {deg(cur.apparent_temperature)}
             </div>
 
-            <div
-              style={{
-                marginTop:8,
-                fontSize:18,
-                fontWeight:500
-              }}
-            >
-              {loc}
-            </div>
+           <div
+  style={{
+    display:"flex",
+    alignItems:"center",
+    gap:8,
+    fontSize:30,
+    fontWeight:700
+  }}
+>
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    style={{
+      opacity:0.9,
+      flexShrink:0
+    }}
+  >
+    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/>
+  </svg>
+
+  <span>{loc}</span>
+</div>
 
           </div>
 
