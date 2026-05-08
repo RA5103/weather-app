@@ -730,7 +730,7 @@ export default function WeatherApp(){
            <div
   style={{
     display:"flex",
-    alignItems:"center",
+    alignment:"center",
     gap:8,
     fontSize:30,
     fontWeight:700
