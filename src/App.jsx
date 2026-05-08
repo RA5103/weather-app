@@ -484,32 +484,59 @@ export default function WeatherApp(){
     )}
   </div>
 )}
-          {tab==="hourly"&&(
-            <div style={{padding:"0 14px"}}>
-              <div style={{fontSize:10,color:"rgba(255,255,255,0.28)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Next 24 Hours</div>
-              <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:8,marginBottom:12}}>
-                {hrs.map((h,i)=>(
-                  <div key={i} style={{...G.sm,borderRadius:16,padding:"12px 10px",minWidth:66,textAlign:"center",flexShrink:0}}>
-                    <div style={{fontSize:10,color:"rgba(255,255,255,0.38)",marginBottom:5}}>{i===0?"Now":fmtHour(h.t)}</div>
-                    <div style={{fontSize:22,marginBottom:4}}>{(WMO[h.code]||WMO[0]).i}</div>
-                    <div style={{fontSize:15,fontWeight:500}}>{deg(h.temp)}</div>
-                    {h.pop>0&&<div style={{fontSize:10,color:"#7dd3fc",marginTop:3}}>💧{h.pop}%</div>}
-                  </div>
-                ))}
-              </div>
-              <div style={{...G.md,borderRadius:18,overflow:"hidden"}}>
-                {hrs.slice(0,12).map((h,i,a)=>(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",fontSize:13,borderBottom:i<a.length-1?"1px solid rgba(255,255,255,0.06)":"none"}}>
-                    <span style={{color:"rgba(255,255,255,0.38)",width:46}}>{i===0?"Now":fmtHour(h.t)}</span>
-                    <span>{(WMO[h.code]||WMO[0]).i}</span>
-                    <span style={{flex:1,fontWeight:500}}>{deg(h.temp)}</span>
-                    <span style={{color:"#7dd3fc",width:38,textAlign:"right"}}>{h.pop>0?`💧${h.pop}%`:""}</span>
-                    <span style={{color:"rgba(255,255,255,0.3)",width:50,textAlign:"right"}}>{Math.round(h.wind)}km/h</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+         {tab==="hourly"&&(
+    }}>
+      Next 24 Hours
+    </div>
+
+    <div style={{...G.md,borderRadius:18,overflow:"hidden"}}>
+      {hrs.slice(0,24).map((h,i,a)=>(
+        <div
+          key={i}
+          style={{
+            display:"flex",
+            alignItems:"center",
+            gap:10,
+            padding:"12px 16px",
+            fontSize:13,
+            borderBottom:i<a.length-1?"1px solid rgba(255,255,255,0.06)":"none"
+          }}
+        >
+          <span style={{
+            color:"rgba(255,255,255,0.38)",
+            width:50
+          }}>
+            {i===0?"Now":fmtHour(h.t)}
+          </span>
+
+          <span style={{fontSize:20}}>
+            {(WMO[h.code]||WMO[0]).i}
+          </span>
+
+          <span style={{flex:1,fontWeight:500}}>
+            {deg(h.temp)}
+          </span>
+
+          <span style={{
+            color:"#7dd3fc",
+            width:48,
+            textAlign:"right"
+          }}>
+            {h.pop>0?`💧${h.pop}%`:""}
+          </span>
+
+          <span style={{
+            color:"rgba(255,255,255,0.3)",
+            width:65,
+            textAlign:"right"
+          }}>
+            {Math.round(h.wind)}km/h
+          </span>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
           {tab==="week"&&daily&&(
             <div style={{padding:"0 14px"}}>
@@ -532,39 +559,56 @@ export default function WeatherApp(){
           )}
 
           {tab==="details"&&(
-            <div style={{padding:"0 14px"}}>
-              <div style={{fontSize:10,color:"rgba(255,255,255,0.28)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Current Conditions</div>
-              <div style={{...G.md,borderRadius:18,overflow:"hidden",marginBottom:12}}>
-                {[
-                  ["Temperature",  deg(cur.temperature_2m)],
-                  ["Feels Like",   deg(cur.apparent_temperature)],
-                  ["Dew Point",    deg(cur.dew_point_2m)],
-                  ["Humidity",     `${cur.relative_humidity_2m}%`],
-                  ["Cloud Cover",  `${cur.cloud_cover}%`],
-                  ["Visibility",   `${(cur.visibility/1000).toFixed(1)} km`],
-                  ["Precipitation",`${cur.precipitation} mm`],
-                  ["Pressure",     `${Math.round(cur.surface_pressure)} hPa`],
-                  ["UV Index",     `${cur.uv_index} — ${uvLabel(cur.uv_index)}`],
-                  ["Wind Speed",   `${Math.round(cur.wind_speed_10m)} km/h`],
-                  ["Wind Gusts",   `${Math.round(cur.wind_gusts_10m)} km/h`],
-                  ["Wind Dir",     `${dirLabel(cur.wind_direction_10m)} (${Math.round(cur.wind_direction_10m)}°)`],
-                ].map(([l,v],i,a)=><Row key={l} label={l} value={v} last={i===a.length-1}/>)}
-              </div>
-              {owm&&(
-                <>
-                  <div style={{fontSize:10,color:"rgba(255,255,255,0.28)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:10}}>Sun</div>
-                  <div style={{...G.md,borderRadius:18,overflow:"hidden",marginBottom:12}}>
-                    {[["Sunrise",fmtTS(owm.sys?.sunrise)],["Sunset",fmtTS(owm.sys?.sunset)],["Timezone",owm.timezone]].map(([l,v],i,a)=><Row key={l} label={l} value={v} last={i===a.length-1}/>)}
-                  </div>
-                </>
-              )}
-              <div style={{...G.sm,borderRadius:14,padding:"12px 16px",fontSize:11,color:"rgba(255,255,255,0.22)"}}>
-                Data: Open-Meteo + OpenWeatherMap · {wx.lat.toFixed(4)}, {wx.lon.toFixed(4)}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+  <div style={{padding:"0 14px"}}>
+
+    <div style={{
+      fontSize:10,
+      color:"rgba(255,255,255,0.28)",
+      textTransform:"uppercase",
+      letterSpacing:1.5,
+      marginBottom:10
+    }}>
+      Current Conditions
+    </div>
+
+    <div style={{...G.md,borderRadius:18,overflow:"hidden",marginBottom:12}}>
+      {[
+        ["Temperature",deg(cur.temperature_2m)],
+        ["Feels Like",deg(cur.apparent_temperature)],
+        ["Dew Point",deg(cur.dew_point_2m)],
+        ["Humidity",`${cur.relative_humidity_2m}%`],
+        ["Cloud Cover",`${cur.cloud_cover}%`],
+        ["Visibility",`${(cur.visibility/1000).toFixed(1)} km`],
+        ["Precipitation",`${cur.precipitation} mm`],
+        ["Pressure",`${Math.round(cur.surface_pressure)} hPa`],
+        ["UV Index",`${cur.uv_index} — ${uvLabel(cur.uv_index)}`],
+        ["Wind Speed",`${Math.round(cur.wind_speed_10m)} km/h`],
+        ["Wind Gusts",`${Math.round(cur.wind_gusts_10m)} km/h`],
+        ["Wind Dir",`${dirLabel(cur.wind_direction_10m)} (${Math.round(cur.wind_direction_10m)}°)`],
+        ["Sunrise",fmtTS(daily?.sunrise?.[0])],
+        ["Sunset",fmtTS(daily?.sunset?.[0])],
+        ["Timezone",Intl.DateTimeFormat().resolvedOptions().timeZone]
+      ].map(([l,v],i,a)=>(
+        <Row
+          key={l}
+          label={l}
+          value={v}
+          last={i===a.length-1}
+        />
+      ))}
+    </div>
+
+    <div style={{
+      ...G.sm,
+      borderRadius:14,
+      padding:"12px 16px",
+      fontSize:11,
+      color:"rgba(255,255,255,0.22)"
+    }}>
+      Data: Open-Meteo + OpenWeatherMap · {wx.lat.toFixed(4)}, {wx.lon.toFixed(4)}
+    </div>
+  </div>
+)}
 
       {!wx&&!busy&&!err&&(
         <div style={{textAlign:"center",padding:60,color:"rgba(255,255,255,0.22)",fontSize:13}}>Allow location or search a city</div>
