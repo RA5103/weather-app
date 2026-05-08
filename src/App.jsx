@@ -15,15 +15,20 @@ const uvLabel  = i => i<=2?"Low":i<=5?"Moderate":i<=7?"High":i<=10?"Very High":"
 const dirLabel = d => ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(d/22.5)%16];
 const fmtHour  = iso => new Date(iso).toLocaleTimeString("en-US",{hour:"numeric",hour12:true});
 const fmtDay   = iso => new Date(iso).toLocaleDateString("en-US",{weekday:"short"});
-{/* Replace the Sunrise/Sunset cards in the "today" tab with this logic */}
-<Card 
-  label="Sunrise" 
-  value={daily ? new Date(daily.sunrise[0]).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—"} 
-/>
-<Card 
-  label="Sunset" 
-  value={daily ? new Date(daily.sunset[0]).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "—"} 
-/>
+const fmtTS = (val) => {
+  if (!val) return "—";
+  // If it's a number (Unix TS from OWM), multiply by 1000. 
+  // If it's a string (ISO from Meteo), use it directly.
+  const date = typeof val === "number" ? new Date(val * 1000) : new Date(val);
+  
+  if (isNaN(date.getTime())) return "—";
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
 
 const G = {
   sm:{background:"rgba(255,255,255,0.08)",backdropFilter:"blur(20px) saturate(160%)",WebkitBackdropFilter:"blur(20px) saturate(160%)",border:"1px solid rgba(255,255,255,0.15)",boxShadow:"0 4px 24px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.18)"},
