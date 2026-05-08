@@ -57,8 +57,8 @@ const UnitToggle = memo(({unit,onToggle}) => (
       transform:unit==="F"?"translateX(34px)":"translateX(0)",
       transition:"transform 0.22s cubic-bezier(.4,0,.2,1)",
     }}/>
-    <span style={{flex:1,textAlign:"center",fontSize:11,fontWeight:600,color:unit==="C"?"#fff":"rgba(255,255,255,0.35)",zIndex:1,transition:"color 0.2s"}}>C</span>
-    <span style={{flex:1,textAlign:"center",fontSize:11,fontWeight:600,color:unit==="F"?"#fff":"rgba(255,255,255,0.35)",zIndex:1,transition:"color 0.2s"}}>F</span>
+    <span style={{flex:1,textAlign:"center",fontSize:11,fontWeight:600,color:unit==="C"?"#fff":"rgba(255,255,255,0.35)",zIndex:1,transition:"color 0.2s"}}>°C</span>
+    <span style={{flex:1,textAlign:"center",fontSize:11,fontWeight:600,color:unit==="F"?"#fff":"rgba(255,255,255,0.35)",zIndex:1,transition:"color 0.2s"}}>°F</span>
   </div>
 ));
 
@@ -83,12 +83,15 @@ export default function WeatherApp(){
   const [menuOpen, setMenuOpen]= useState(false);
   const [saved,    setSaved]   = useState(()=>{try{return JSON.parse(localStorage.getItem("wx_saved")||"[]")}catch{return []}});
   const [previews, setPreviews]= useState({});
+  // New state for local time
+  const [localTime, setLocalTime] = useState({date: "", time: ""});
 
   const searchRef = useRef(null);
   const menuRef   = useRef(null);
   const dRef      = useRef(null);
+  const timeRef   = useRef();
 
-  const deg = useCallback(v=>`${Math.round(unit==="C"?v:v*9/5+32)}°`,[unit]);
+  const deg = useCallback(v=>`${Math.round(unit==="C"?v:v*9/5+32)}${unit}`,[unit]);
 
   useEffect(()=>{ localStorage.setItem("wx_saved",JSON.stringify(saved)); },[saved]);
 
@@ -100,6 +103,36 @@ export default function WeatherApp(){
       }catch{}
     });
   },[saved]);
+
+  // Update local time every second
+  useEffect(() => {
+    const updateLocalTime = () => {
+      if (!wx?.meteo?.timezone) return;
+      
+      const now = new Date();
+      const localDate = now.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        timeZone: wx.meteo.timezone 
+      });
+      const localTimeStr = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: true,
+        timeZone: wx.meteo.timezone 
+      });
+      
+      setLocalTime({ date: localDate, time: localTimeStr });
+    };
+
+    timeRef.current = setInterval(updateLocalTime, 1000);
+    updateLocalTime(); // Initial call
+
+    return () => clearInterval(timeRef.current);
+  }, [wx?.meteo?.timezone]);
 
   const load = useCallback(async(lat,lon,name)=>{
     setBusy(true); setErr(null); setOpen(false); setSugs([]); setMenuOpen(false);
@@ -250,7 +283,7 @@ export default function WeatherApp(){
                   <span style={{color:"rgba(255,255,255,0.38)"}}>Tap + below to save.</span>
                 </div>
               ) : (
-                <div style={{maxHeight:320,overflowY:"auto"}}>
+                <div style={{maxHeight:260,overflowY:"auto"}}>
                   {saved.map((s,i)=>{
                     const p = previews[s.name];
                     const w = p?(WMO[p.weather_code]||WMO[0]):null;
@@ -262,11 +295,11 @@ export default function WeatherApp(){
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:13,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:isActive?"#fff":"rgba(255,255,255,0.82)"}}>{s.name}</div>
                           <div style={{fontSize:11,color:"rgba(255,255,255,0.32)",marginTop:2}}>
-                            {p ? `${w.l} · ${Math.round(unit==="C"?p.apparent_temperature:p.apparent_temperature*9/5+32)}° feels` : "Loading…"}
+                            {p ? `${w.l} · ${Math.round(unit==="C"?p.apparent_temperature:p.apparent_temperature*9/5+32)}${unit} feels` : "Loading…"}
                           </div>
                         </div>
                         <div style={{fontSize:18,fontWeight:300,color:"rgba(255,255,255,0.88)",flexShrink:0}}>
-                          {p ? `${Math.round(unit==="C"?p.temperature_2m:p.temperature_2m*9/5+32)}°` : ""}
+                          {p ? `${Math.round(unit==="C"?p.temperature_2m:p.temperature_2m*9/5+32)}${unit}` : ""}
                         </div>
                         <button onClick={e=>removeLocation(s.name,e)}
                           style={{background:"none",border:"none",color:"rgba(255,255,255,0.18)",cursor:"pointer",fontSize:18,padding:"0 0 0 4px",lineHeight:1,flexShrink:0}}
@@ -277,6 +310,12 @@ export default function WeatherApp(){
                   })}
                 </div>
               )}
+
+              {/* Unit Toggle in Menu */}
+              <div style={{padding:"12px 16px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+                <div style={{fontSize:10,color:"rgba(255,255,255,0.38)",textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>Temperature Unit</div>
+                <UnitToggle unit={unit} onToggle={()=>setUnit(u=>u==="C"?"F":"C")}/>
+              </div>
 
               {loc && (
                 <div style={{padding:"10px 12px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
@@ -290,7 +329,7 @@ export default function WeatherApp(){
           )}
         </div>
 
-        {/* Search */}
+        {/* Search - Removed Unit Toggle from here */}
         <div ref={searchRef} style={{flex:1,position:"relative"}}>
           <div style={{display:"flex",gap:8}}>
             <div style={{flex:1,position:"relative"}}>
@@ -330,9 +369,6 @@ export default function WeatherApp(){
                 <circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
               </svg>
             </button>
-
-            {/* Unit toggle */}
-            <UnitToggle unit={unit} onToggle={()=>setUnit(u=>u==="C"?"F":"C")}/>
           </div>
         </div>
       </div>
@@ -356,15 +392,37 @@ export default function WeatherApp(){
       {wx && cur && !busy && (
         <div style={{animation:"fadeUp 0.3s ease",position:"relative",zIndex:1}}>
 
-          {/* Hero */}
+          {/* Hero - Updated with Local Date/Time */}
           <div style={{padding:"26px 14px 18px",textAlign:"center"}}>
             <div style={{fontSize:78,lineHeight:1,marginBottom:8,filter:"drop-shadow(0 0 32px rgba(140,180,255,0.4))",userSelect:"none"}}>{wmo.i}</div>
             <div style={{fontSize:84,fontWeight:300,letterSpacing:-5,lineHeight:1,marginBottom:4,textShadow:"0 0 60px rgba(140,200,255,0.2)"}}>{deg(cur.temperature_2m)}</div>
-            <div style={{color:"rgba(255,255,255,0.42)",fontSize:13,marginBottom:5}}>Feels like {deg(cur.apparent_temperature)}</div>
+            
+            {/* Local Date/Time Section */}
+            <div style={{marginBottom:12}}>
+              <div style={{color:"rgba(255,255,255,0.42)",fontSize:13,marginBottom:2}}>Feels like {deg(cur.apparent_temperature)}</div>
+              {localTime.date && (
+                <div style={{color:"rgba(255,255,255,0.32)",fontSize:12,marginBottom:2,letterSpacing:0.3}}>
+                  {localTime.date}
+                </div>
+              )}
+              {localTime.time && (
+                <div style={{
+                  fontSize:20,
+                  fontWeight:500,
+                  color:"rgba(255,255,255,0.65)",
+                  letterSpacing:-0.3,
+                  textShadow:"0 1px 4px rgba(0,0,0,0.3)"
+                }}>
+                  {localTime.time}
+                </div>
+              )}
+            </div>
+            
             <div style={{fontSize:15,fontWeight:500,letterSpacing:2,textTransform:"uppercase"}}>{wmo.l}</div>
             <div style={{fontSize:12,color:"rgba(255,255,255,0.32)",marginTop:5}}>· {loc}</div>
           </div>
 
+          {/* Rest of the component remains the same */}
           {/* Tabs */}
           <div style={{display:"flex",margin:"0 14px 14px",padding:4,borderRadius:18,...G.md}}>
             {["today","hourly","week","details"].map(t=>(
@@ -448,8 +506,8 @@ export default function WeatherApp(){
                   ["Wind Speed",    `${Math.round(cur.wind_speed_10m)} km/h`],
                   ["Wind Gusts",    `${Math.round(cur.wind_gusts_10m)} km/h`],
                   ["Wind Dir",      `${dirLabel(cur.wind_direction_10m)} (${Math.round(cur.wind_direction_10m)}°)`],
-                 ["Sunrise",       fmtTS(daily?.sunrise?.[0])],
-["Sunset",        fmtTS(daily?.sunset?.[0])],
+                  ["Sunrise",       fmtTS(daily?.sunrise?.[0])],
+                  ["Sunset",        fmtTS(daily?.sunset?.[0])],
                   ["Timezone",      wx?.meteo?.timezone||"—"],
                 ].map(([l,v],i,a)=>(
                   <Row key={l} label={l} value={v} last={i===a.length-1}/>
