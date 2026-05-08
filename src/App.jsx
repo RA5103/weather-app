@@ -287,7 +287,7 @@ export default function WeatherApp() {
             <div style={{fontSize:84,fontWeight:300,letterSpacing:-5,lineHeight:1,marginBottom:4,textShadow:"0 0 60px rgba(140,200,255,0.25)"}}>{deg(cur.temperature_2m)}</div>
             <div style={{color:"rgba(255,255,255,0.45)",fontSize:13,marginBottom:5}}>Feels like {deg(cur.apparent_temperature)}</div>
             <div style={{fontSize:15,fontWeight:500,letterSpacing:2,textTransform:"uppercase"}}>{wmo.l}</div>
-            <div style={{fontSize:12,color:"rgba(255,255,255,0.35)",marginTop:5}}>📍 {loc}</div>
+           <div style={{fontSize:12,color:"rgba(255,255,255,0.35)",marginTop:5}}>· {loc}</div>
           </div>
 
           {/* Tabs */}
